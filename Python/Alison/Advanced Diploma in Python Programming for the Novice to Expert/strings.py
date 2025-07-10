@@ -14,4 +14,3 @@ third_str = "This is the first \nThis is the second"
 
 
 
-
