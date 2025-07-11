@@ -22,5 +22,11 @@ a: string
 q: Which function converts a string to an integer? Drag the correct answer into the space provided. 
 a: Ord()
 
+q: What are the two values that Booleans can take?
+a: True, False
 
+q: What are the examples of basic types in Python?
+a: Booleans, Integers, Strings
 
+q:
+a:
