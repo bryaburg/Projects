@@ -28,5 +28,26 @@ a: True, False
 q: What are the examples of basic types in Python?
 a: Booleans, Integers, Strings
 
-q:
-a:
+q: What are the different examples of Python operators?
+a: Logical, Assignment, Comparison, Arithmetic
+
+q: Which Python operators are used with numeric values to perform common mathematical operationws
+a: Arithmetic
+
+q: True or False: Comparison operators are used to assign values to variables
+a: False
+
+q: Match the following arithmetic operators
+a: Modulus %, Floor Division //, Exponent **, Multiplication *
+
+q: Fill in teh blank: ---- operators are used to test if a sequence is presented in an object. 
+a: membership
+
+q: Which Python operators are used to combine coniditional statements?
+a: Logical
+
+q: true or false:  Identity operators are used to compare if objects are the same
+a: true
+
+
+
