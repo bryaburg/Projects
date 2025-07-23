@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 /* Copy input to output */
+/* Write a program to print the value of EOF */
 
 main()
 {
