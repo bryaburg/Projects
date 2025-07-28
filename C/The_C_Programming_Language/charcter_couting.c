@@ -11,20 +11,24 @@ and backspaces visible in an unambiguous way. */
 main()
 {
   int c, nl, blanks, tabs;
+  char text;
 
   nl = 0;
   blanks = 0;
   tabs = 0;
 
   while ((c = getchar()) != EOF)
-    if (c == '\n') {
+    if (c == '\n') { 
         ++nl;
+        if (nl > 1)
     }
-    else (c == '\b') {
-        ++blanks;
+    else if (c == ' '){
+      ++blanks;
     }
-    else (c == '\t') {
-        ++tabs;
+    else if (c == '\t'){
+      ++tabs;
     }
-  printf("%d\n%d\n%d\n", nl, blanks, tabs);
+  printf("New Lines %d\n Blanks %d\n Tabs %d\n", nl, blanks, tabs);
+
+  return 0;
 }
