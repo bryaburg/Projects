@@ -28,6 +28,7 @@ main()
     else if (c == '\t'){
       ++tabs;
     }
+
   printf("New Lines %d\n Blanks %d\n Tabs %d\n", nl, blanks, tabs);
 
   return 0;
