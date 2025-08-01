@@ -8,27 +8,32 @@ of one or more blanks by a single blank. */
 by \t, each backspace by \b, and each backslash by \\. This makes tabs
 and backspaces visible in an unambiguous way. */
 
-main()
+int main(void)
 {
   int c, nl, blanks, tabs;
-  char text;
 
   nl = 0;
   blanks = 0;
   tabs = 0;
 
-  while ((c = getchar()) != EOF)
+  while ((c = getchar()) != EOF) {
     if (c == '\n') { 
         ++nl;
-        if (nl > 1)
+        putchar(c);
     }
     else if (c == ' '){
       ++blanks;
+      putchar(c);
     }
     else if (c == '\t'){
       ++tabs;
+      putchar(c);
     }
-
+    else {
+      putchar(c);
+    }
+  }
+  
   printf("New Lines %d\n Blanks %d\n Tabs %d\n", nl, blanks, tabs);
 
   return 0;
