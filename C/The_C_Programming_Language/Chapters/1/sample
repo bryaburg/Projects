@@ -1,0 +1,417 @@
+'PID input staged to digital output
+'James Naughton
+'7/31/25
+
+' --- Input Variables ---
+Numeric Input ClgSig        ' PID output for Cooling
+Numeric Input HtgSig        ' PID output for Heating
+Numeric Input EnbCmd        ' Enable/Disable Command for the entire system
+Numeric Input Eru1HtgCall   ' Heating Call from Energy Recovery Unit 1
+Numeric Input Eru2HtgCall   ' Heating Call from Energy Recovery Unit 2
+Numeric Input Eru1ClgCall   ' Cooling Call from Energy Recovery Unit 1
+Numeric Input Eru2ClgCall   ' Cooling Call from Energy Recovery Unit 2
+
+' --- Output Variables (Grouped for Clarity) ---
+Numeric Output PidEna
+
+' Cooling Stages (Stg1 refers to "Stage 1" outputs for cooling
+Numeric Output ClgMde1Stg1
+Numeric Output ClgMde2Stg1
+Numeric Output ClgMde3Stg1
+Numeric Output ClgMde4Stg1
+Numeric Output ClgMde5Stg1
+
+' Heating Stages (Stg1 refers to "Stage 1" outputs for heating)
+Numeric Output HtgMde1Stg1    
+Numeric Output HtgMde1Stg2    
+Numeric Output HtgMde1Stg3    
+Numeric Output HtgMde1Stg4    
+Numeric Output HtgMde1Stg5    
+
+' Secondary Stages (MdeXStg2 - these seem to be common across heating/cooling, e.g., compressor stages or secondary pumps)
+Numeric Output Mde1Stg2
+Numeric Output Mde2Stg2    
+Numeric Output Mde3Stg2
+Numeric Output Mde4Stg2    
+Numeric Output Mde5Stg2    
+
+' --- Internal Variables for Stage Tracking ---
+Numeric CurrentClgStage 
+Numeric CurrentHtgStage
+
+' =========================================================
+' Subroutines to manage outputs (simulating functions)
+' =========================================================
+
+Line TurnOffAllStages
+  PidEna = Off
+  ClgMde1Stg1, ClgMde2Stg1, ClgMde3Stg1, ClgMde4Stg1, ClgMde5Stg1 = Off
+  HtgMde1Stg1, HtgMde1Stg2, HtgMde1Stg3, HtgMde1Stg4, HtgMde1Stg5 = Off
+  Mde1Stg2, Mde2Stg2, Mde3Stg2, Mde4Stg2, Mde5Stg2 = Off
+Return
+
+Line TurnOffCoolingStages
+  ClgMde1Stg1, ClgMde2Stg1, ClgMde3Stg1, ClgMde4Stg1, ClgMde5Stg1 = Off
+  Mde1Stg2, Mde2Stg2, Mde3Stg2, Mde4Stg2, Mde5Stg2 = Off
+Return
+
+Line TurnOffHeatingStages
+  HtgMde1Stg1, HtgMde1Stg2, HtgMde1Stg3, HtgMde1Stg4, HtgMde1Stg5 = Off
+  Mde1Stg2, Mde2Stg2, Mde3Stg2, Mde4Stg2, Mde5Stg2 = Off
+Return
+
+' =========================================================
+' Main Program Flow
+' =========================================================
+
+Line Init
+  CurrentClgStage = 0
+  CurrentHtgStage = 0
+GoTo AllOff
+
+Line AllOff
+
+  CurrentClgStage = 0
+  CurrentHtgStage = 0
+
+  GoSub TurnOffAllStages
+
+  If EnbCmd = On Then GoTo Main
+
+Line Main
+
+  CurrentClgStage = 0
+  CurrentHtgStage = 0
+  GoSub TurnOffAllStages
+
+  If EnbCmd = Off Then GoTo AllOff
+
+  If (HtgSig > 25 and TS > 5 and (Eru1HtgCall or Eru2HtgCall)) Then GoTo HtgMode
+  If (ClgSig > 25 and TS > 5 and (Eru1ClgCall or Eru2ClgCall)) Then GoTo ClgMode
+
+  GoTo Main
+
+' =========================================================
+' Cooling Mode Logic
+' =========================================================
+
+Line ClgMode
+  PidEna = On
+  GoSub TurnOffHeatingStages 
+
+
+  If EnbCmd = Off Then GoTo AllOff
+  If (Eru1ClgCall = Off and Eru2ClgCall = Off) Then GoTo Main
+
+  Numeric DesiredClgStage
+  If ClgSig >= 95 Then DesiredClgStage = 10
+  Else If ClgSig >= 90 Then DesiredClgStage = 9
+  Else If ClgSig >= 80 Then DesiredClgStage = 8
+  Else If ClgSig >= 70 Then DesiredClgStage = 7
+  Else If ClgSig >= 60 Then DesiredClgStage = 6
+  Else If ClgSig >= 50 Then DesiredClgStage = 5
+  Else If ClgSig >= 40 Then DesiredClgStage = 4
+  Else If ClgSig >= 30 Then DesiredClgStage = 3
+  Else If ClgSig >= 20 Then DesiredClgStage = 2
+  Else If ClgSig >= 10 Then DesiredClgStage = 1
+  Else DesiredClgStage = 0
+
+
+  If DesiredClgStage > CurrentClgStage Then
+
+    If TM >= 2 Then CurrentClgStage = CurrentClgStage + 1
+  Else If DesiredClgStage < CurrentClgStage Then
+
+    If TM >= 1 Then CurrentClgStage = CurrentClgStage - 1
+  End If
+
+
+  If CurrentClgStage < 0 Then CurrentClgStage = 0
+  If CurrentClgStage > 10 Then CurrentClgStage = 10
+
+
+  GoSub TurnOffCoolingStages
+
+  If CurrentClgStage >= 1 Then ClgMde1Stg1 = On
+  If CurrentClgStage >= 2 Then ClgMde2Stg1 = On
+  If CurrentClgStage >= 3 Then Mde1Stg2 = On
+  If CurrentClgStage >= 4 Then Mde2Stg2 = On
+  If CurrentClgStage >= 5 Then ClgMde3Stg1 = On
+  If CurrentClgStage >= 6 Then ClgMde4Stg1 = On
+  If CurrentClgStage >= 7 Then ClgMde5Stg1 = On
+  If CurrentClgStage >= 8 Then Mde3Stg2 = On
+  If CurrentClgStage >= 9 Then Mde4Stg2 = On
+  If CurrentClgStage >= 10 Then Mde5Stg2 = On
+  If CurrentClgStage = 0 Then GoTo Main
+
+  GoTo ClgMode
+
+' =========================================================
+' Heating Mode Logic
+' =========================================================
+
+Line HtgMode
+  PidEna = On
+  GoSub TurnOffCoolingStages 
+  If EnbCmd = Off Then GoTo AllOff
+  If (Eru1HtgCall = Off and Eru2HtgCall = Off) Then GoTo Main
+
+  Numeric DesiredHtgStage
+  If HtgSig >= 95 Then DesiredHtgStage = 10
+  Else If HtgSig >= 90 Then DesiredHtgStage = 9
+  Else If HtgSig >= 80 Then DesiredHtgStage = 8
+  Else If HtgSig >= 70 Then DesiredHtgStage = 7
+  Else If HtgSig >= 60 Then DesiredHtgStage = 6
+  Else If HtgSig >= 50 Then DesiredHtgStage = 5
+  Else If HtgSig >= 40 Then DesiredHtgStage = 4
+  Else If HtgSig >= 30 Then DesiredHtgStage = 3
+  Else If HtgSig >= 20 Then DesiredHtgStage = 2
+  Else If HtgSig >= 10 Then DesiredHtgStage = 1
+  Else DesiredHtgStage = 0
+
+
+  If DesiredHtgStage > CurrentHtgStage Then
+    If TM >= 2 Then CurrentHtgStage = CurrentHtgStage + 1
+  Else If DesiredHtgStage < CurrentHtgStage Then
+    If TM >= 1 Then CurrentHtgStage = CurrentHtgStage - 1
+  End If
+
+  If CurrentHtgStage < 0 Then CurrentHtgStage = 0
+  If CurrentHtgStage > 10 Then CurrentHtgStage = 10
+
+
+  GoSub TurnOffHeatingStages
+
+  If CurrentHtgStage >= 1 Then HtgMde1Stg1 = On
+  If CurrentHtgStage >= 2 Then HtgMde1Stg2 = On
+  If CurrentHtgStage >= 3 Then Mde1Stg2 = On
+  If CurrentHtgStage >= 4 Then Mde2Stg2 = On
+  If CurrentHtgStage >= 5 Then HtgMde1Stg3 = On
+  If CurrentHtgStage >= 6 Then HtgMde1Stg4 = On
+  If CurrentHtgStage >= 7 Then HtgMde1Stg5 = On
+  If CurrentHtgStage >= 8 Then Mde3Stg2 = On
+  If CurrentHtgStage >= 9 Then Mde4Stg2 = On
+  If CurrentHtgStage >= 10 Then Mde5Stg2 = On
+
+
+  If CurrentHtgStage = 0 Then GoTo Main
+
+  GoTo HtgMode
+
+
+
+
+
+
+  'PID input staged to digital output
+'James Naughton
+'7/31/25
+Numeric Input ClgSig,HtgSig,EnbCmd
+Numeric Output ClgMde1Stg1,ClgMde2Stg1,ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1
+Numeric Output Mde1Stg2,Mde2Stg2Mde3Stg2,Mde4Stg2,Mde5Stg2
+Numeric Output HtgMde1Stg1,HtgMde2Stg1,HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1
+Numeric Output PidEna
+
+Line AllOff
+  PidEna = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,HtgMde1Stg1,HtgMde2Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2,Mde1Stg2,Mde2Stg2 = Off
+  If EnbCmd = On Then GoTo Main
+Line Main
+  PidEna = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,HtgMde1Stg1,HtgMde2Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2,Mde1Stg2,Mde2Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If HtgSig > 25 and TS > 5 and Eru1HtgCall or Eru2HtgCall Then GoTo HtgMode
+  If ClgSig > 25 and TS > 5 and Eru1ClgCall or Eru2ClgCall Then GoTo ClgMode
+Line ClgMode
+  PidEna = On
+  ClgMde1Stg1 = On
+  If ClgSig < 10 and TM >= 1 Then GoTo Line Main
+  ClgMde3Stg1, ClgMde4Stg1,ClgMde5Stg1,ClgMde2Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,HtgMde1Stg1,HtgMde2Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2,Mde1Stg2,Mde2Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage2
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage2
+  PidEna = On
+  ClgMde1Stg1,ClgMde2Stg1 = On
+  If ClgSig < 20 and TM >= 1 Then GoTo Line ClgMode
+  ClgMde3Stg1, ClgMde4Stg1,ClgMde5Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,HtgMde1Stg1,HtgMde2Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2,Mde1Stg2,Mde2Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage3
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage3
+  PidEna = On
+  ClgMde1Stg1,ClgMde2Stg1,Mde1Stg2 = On
+  If ClgSig < 30 and TM >= 1 Then GoTo Line ClgModeStage2
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,HtgMde1Stg1,HtgMde2Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2,Mde2Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage4
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage4
+  PidEna = On
+  ClgMde1Stg1,Mde1Stg2,ClgMde2Stg1,Mde2Stg2 = On
+  If ClgSig < 40 and TM >= 1 Then GoTo Line ClgModeStage3
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,HtgMde1Stg1,HtgMde2Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage5
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage5
+  PidEna = On
+  ClgMde1Stg1,Mde1Stg2,ClgMde2Stg1,Mde2Stg2,ClgMde3Stg1 = On
+  If ClgSig < 50 and TM >= 1 Then GoTo Line ClgModeStage4
+  ClgMde4Stg1,ClgMde5Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,HtgMde1Stg1,HtgMde2Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage6
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage6
+  PidEna = On
+  ClgMde1Stg1,Mde1Stg2,ClgMde2Stg1,Mde2Stg2,ClgMde3Stg1,ClgMde4Stg1 = On
+  If ClgSig < 60 and TM >= 1 Then GoTo Line ClgModeStage5
+  ClgMde5Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage7
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage7
+  ClgMde1Stg1,Mde1Stg2,ClgMde2Stg1,Mde2Stg2,ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1 = On
+  If ClgSig < 70 and TM >= 1 Then GoTo Line ClgModeStage6
+  Mde3Stg2,Mde4Stg2,Mde5Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage8
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage8
+  PidEna = On
+  ClgMde1Stg1,Mde1Stg2,ClgMde2Stg1,Mde2Stg2,ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,Mde3Stg2 = On
+  If ClgSig < 80 and TM >= 1 Then GoTo Line ClgModeStage7
+  Mde4Stg2,Mde5Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage9
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage9
+  PidEna = On
+  ClgMde1Stg1,Mde1Stg2,ClgMde2Stg1,Mde2Stg2,ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,Mde3Stg2,Mde4Stg2 = On
+  If ClgSig < 90 and TM >= 1 Then GoTo Line ClgModeStage8
+  Mde5Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo ClgModeStage10
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+Line ClgModeStage10
+  PidEna = On
+  ClgMde1Stg1,Mde1Stg2,ClgMde2Stg1,Mde2Stg2,ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,Mde3Stg2,Mde4Stg2,Mde5Stg2 = On
+  If EnbCmd = Off Then GoTo AllOff
+  If ClgSig < 95 and TM >= 1 Then GoTo Line ClgModeStage9
+  If Eru1ClgCall = off and Eru2ClgCall = Off Then GoTo Main
+'HEATING
+'HEATING
+'HEATING
+'HEATING
+'HEATING
+'HEATING
+Line HtgMode
+  PidEna = On
+  HtgMde1Stg1 = On
+  If HtgSig < 10 and TM >= 1 Then GoTo Line Main
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,HtgMde2Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2,Mde1Stg2,Mde2Stg2 = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage2
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage2
+  PidEna = On
+  HtgMde1Stg1,HtgMde2Stg1 = On
+  If HtgSig < 20 and TM >= 1 Then GoTo Line HtgMode
+  HtgMde3Stg1, HtgMde4Stg1,HtgMde5Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2,Mde1Stg2,Mde2Stg2 = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage3
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage3
+  PidEna = On
+  HtgMde1Stg1,HtgMde2Stg1,Mde1Stg2 = On
+  If HtgSig < 30 and TM >= 1 Then GoTo Line HtgModeStage2
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1 = Off
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2,Mde2Stg2 = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage4
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage4
+  PidEna = On
+  HtgMde1Stg1,Mde1Stg2,HtgMde2Stg1,Mde2Stg2 = On
+  If HtgSig < 40 and TM >= 1 Then GoTo Line HtgModeStage3
+  HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2 = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage5
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage5
+  PidEna = On
+  HtgMde1Stg1,Mde1Stg2,HtgMde2Stg1,Mde2Stg2,HtgMde3Stg1 = On
+  If HtgSig < 50 and TM >= 1 Then GoTo Line HtgModeStage4
+  HtgMde4Stg1,HtgMde5Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2 = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage6
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage6
+  PidEna = On
+  HtgMde1Stg1,Mde1Stg2,HtgMde2Stg1,Mde2Stg2,HtgMde3Stg1,HtgMde4Stg1 = On
+  If HtgSig < 60 and TM >= 1 Then GoTo Line HtgModeStage5
+  HtgMde5Stg1 = Off
+  Mde3Stg2,Mde4Stg2,Mde5Stg2 = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage7
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage7
+  HtgMde1Stg1,Mde1Stg2,HtgMde2Stg1,Mde2Stg2,HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1 = On
+  If HtgSig < 70 and TM >= 1 Then GoTo Line HtgModeStage6
+  Mde3Stg2,Mde4Stg2,Mde5Stg2 = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage8
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage8
+  PidEna = On
+  HtgMde1Stg1,Mde1Stg2,HtgMde2Stg1,Mde2Stg2,HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,Mde3Stg2 = On
+  If HtgSig < 80 and TM >= 1 Then GoTo Line HtgModeStage7
+  Mde4Stg2,Mde5Stg2 = Off
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage9
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage9
+  PidEna = On
+  HtgMde1Stg1,Mde1Stg2,HtgMde2Stg1,Mde2Stg2,HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,Mde3Stg2,Mde4Stg2 = On
+  If HtgSig < 90 and TM >= 1 Then GoTo Line HtgModeStage8
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  Mde5Stg2 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If TM >= 2 Then GoTo HtgModeStage10
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
+Line HtgModeStage10
+  PidEna = On
+  HtgMde1Stg1,Mde1Stg2,HtgMde2Stg1,Mde2Stg2,HtgMde3Stg1,HtgMde4Stg1,HtgMde5Stg1,Mde3Stg2,Mde4Stg2,Mde5Stg2 = On
+  ClgMde3Stg1,ClgMde4Stg1,ClgMde5Stg1,ClgMde1Stg1,ClgMde2Stg1 = Off
+  If EnbCmd = Off Then GoTo AllOff
+  If HtgSig < 95 and TM >= 1 Then GoTo Line HtgModeStage9
+  If Eru1HtgCall = Off and Eru2HtgCall = Off Then GoTo Main
