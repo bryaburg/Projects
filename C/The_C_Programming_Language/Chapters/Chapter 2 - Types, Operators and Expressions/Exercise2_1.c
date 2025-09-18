@@ -7,7 +7,6 @@ Harder if you compute them: determine the ranges of the various floating-point t
 #include <float.h>
 #include <math.h>
 
-// Helper to print binary representation
 void print_binary(unsigned long long value, int bits) {
     for (int i = bits - 1; i >= 0; i--) {
         printf("%c", (value & (1ULL << i)) ? '1' : '0');
@@ -16,7 +15,6 @@ void print_binary(unsigned long long value, int bits) {
     printf("\n");
 }
 
-// Compute max float by multiplying until INF
 float compute_float_max() {
     float f = 1.0f;
     float prev = f;
@@ -27,7 +25,6 @@ float compute_float_max() {
     return prev;
 }
 
-// Compute min positive float by dividing until zero
 float compute_float_min() {
     float f = 1.0f;
     float prev = f;
@@ -38,7 +35,6 @@ float compute_float_min() {
     return prev;
 }
 
-// Same for double
 double compute_double_max() {
     double d = 1.0;
     double prev = d;
@@ -59,7 +55,6 @@ double compute_double_min() {
     return prev;
 }
 
-// Same for long double
 long double compute_long_double_max() {
     long double ld = 1.0L;
     long double prev = ld;
