@@ -7,8 +7,7 @@
 /* Write a test program to uncover bugs */
 /* Write a program that prints its input one word per line */
 
-int main(void)
-{
+int main(void) {
   int c, nl, nw, nc, state;
 
   state = OUT;
@@ -19,7 +18,7 @@ int main(void)
       ++nl;
     if (c == ' ' || c == '\n' || c == '\t')
       state = OUT;
-    else if (state == out){
+    else if (state == OUT) {
       state = IN;
       ++nw;
     }
